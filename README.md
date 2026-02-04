@@ -26,15 +26,15 @@ Local viewer for a WhatsApp export (`_chat.txt`) with timeline, media, and print
 
 1. Rename the exported text file to `_chat.txt`.
 1. If you chose **Include media**, unzip the archive if needed.
-1. Put `_chat.txt` and the media files in the same folder as `whatsapp-viewerV2.html`.
+1. Put `_chat.txt` and the media files in the same folder
 1. Dates in **DD/MM/YYYY** are supported. US exports **MM/DD/YYYY** are auto-detected. If ambiguous (e.g. 01/02/2026), day/month is assumed.
 1. English bracket format is supported: `[MM/DD/YY, H:MM:SS AM] Name: Message` (with `AM/PM`).
 
 ## Quick start
 
-1. Open `whatsapp-viewerV2.html`.
-1. `_chat.txt` loads automatically if the page is served by a local server.
-1. If auto-load fails (blocked by `file://`), use **Choose _chat.txt**.
+1. Open `whatsapp-viewerV1.html`.
+1. Select the folder that contains `_chat.txt` and the media files.
+
 
 ## Optional Run a local server 
 
@@ -44,7 +44,7 @@ Simple option with Python:
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000/whatsapp-viewerV2.html`.
+Then open `http://localhost:8000/whatsapp-viewerV1.html`.
 
 ## Printing
 
