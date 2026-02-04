@@ -36,7 +36,7 @@ Local viewer for a WhatsApp export (`_chat.txt`) with timeline, media, and print
 1. `_chat.txt` loads automatically if the page is served by a local server.
 1. If auto-load fails (blocked by `file://`), use **Choose _chat.txt**.
 
-## Run a local server (recommended)
+## Optional Run a local server 
 
 Simple option with Python:
 
