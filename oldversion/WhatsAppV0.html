@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Chat Viewer</title>
+  <style>
+    /* Mimic WhatsApp background */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #e5ddd5;
+      margin: 0;
+      padding: 0;
+    }
+    :root {
+      --image-size: 120px;
+    }
+    h2 {
+      background-color: #075e54;
+      color: white;
+      margin: 0;
+      padding: 10px;
+      text-align: center;
+    }
+    /* Layout */
+    #app {
+      max-width: 1200px;
+      margin: 20px auto;
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 14px;
+      padding: 0 10px;
+    }
+    #timeline {
+      background: #ffffff;
+      border-radius: 6px;
+      box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+      padding: 10px 8px;
+      height: 80vh;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+    #timeline-title {
+      font-size: 12px;
+      color: #444;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .timeline-filter {
+      font-size: 11px;
+      text-align: center;
+      color: #075e54;
+      cursor: pointer;
+      padding: 4px 0;
+      border-radius: 4px;
+    }
+    .timeline-filter.active {
+      background: #e8f5e9;
+      font-weight: 600;
+    }
+    #timeline-bars {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: auto;
+    }
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .timeline-bar {
+      height: 12px;
+      border-radius: 4px;
+      background: #cfd8dc;
+      position: relative;
+      cursor: pointer;
+      flex: 1;
+    }
+    .timeline-bar span {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      border-radius: 4px;
+      background: #4caf50;
+    }
+    .timeline-bar.active {
+      outline: 2px solid #075e54;
+    }
+    .timeline-label {
+      font-size: 10px;
+      color: #666;
+      text-transform: capitalize;
+      letter-spacing: 0.2px;
+      margin-top: 6px;
+      cursor: pointer;
+    }
+    .timeline-label.active {
+      color: #075e54;
+      font-weight: 600;
+    }
+
+    /* Chat container styling */
+    #chat-container {
+      padding: 10px;
+      background-color: #ffffff;
+      border-radius: 5px;
+      box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+      overflow-y: auto;
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #chat-container.hide-images img {
+      display: none;
+    }
+    #chat-container.hide-images .media-images-only {
+      display: none;
+    }
+    /* Chat bubble styling */
+    .message {
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: 7px;
+      max-width: 72%;
+      word-wrap: break-word;
+      clear: both;
+    }
+    .message.media-only {
+      padding-top: 6px;
+    }
+    .message.media-only .media {
+      margin-top: 0;
+    }
+    .message-row {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) 34px;
+      column-gap: 8px;
+      align-items: baseline;
+      margin: 5px 0;
+    }
+    .message-row.media-only {
+      align-items: start;
+    }
+    .message-row .message {
+      display: inline-block;
+    }
+    .message-row.user .message {
+      grid-column: 2;
+      justify-self: end;
+    }
+    .message-row.other .message {
+      grid-column: 2;
+      justify-self: start;
+    }
+    .initials {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 0;
+    }
+    .message-row.media-only .initials {
+      margin-top: 6px;
+    }
+    .message-row.other .initials {
+      grid-column: 1;
+      justify-self: start;
+      background: #f1f1f1;
+      color: #333333;
+    }
+    .message-row.user .initials {
+      grid-column: 3;
+      justify-self: end;
+      background: #d1e7ff;
+      color: #0b3d91;
+    }
+    .message.user {
+      background-color: #e6f0ff;
+      text-align: right;
+    }
+    .message.other {
+      background-color: #ffffff;
+      border: 1px solid #f1f1f1;
+      text-align: left;
+    }
+    .time-group {
+      padding: 6px 8px;
+      border-radius: 6px;
+      margin-top: 6px;
+    }
+    .time-group.day {
+      background: #f5f9ff;
+    }
+    .time-group.night {
+      background: #f2f2f2;
+    }
+    .time-header {
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+      margin: 2px 0 6px;
+      text-transform: capitalize;
+    }
+    img, video {
+      max-width: 100%;
+      margin-top: 5px;
+      border-radius: 5px;
+    }
+    .media {
+      margin-left: 20px;
+      margin-top: 6px;
+      opacity: 0.95;
+    }
+    .media img,
+    .media video {
+      margin-top: 0;
+    }
+    .media img {
+      width: 100%;
+      max-width: var(--image-size);
+    }
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(var(--image-size), 1fr));
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .image-grid img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .message-text {
+      margin-top: 0;
+      white-space: pre-wrap;
+    }
+    a.download-link {
+      margin-top: 5px;
+      display: block;
+    }
+    /* File input styling */
+    #fileInput {
+      margin: 10px auto;
+      display: block;
+    }
+    #media-controls {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 6px auto 12px;
+      flex-wrap: wrap;
+    }
+    .control-button {
+      border: 1px solid #cfd8dc;
+      background: #ffffff;
+      color: #075e54;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .control-button.active {
+      background: #075e54;
+      color: #ffffff;
+      border-color: #075e54;
+    }
+    #image-size-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #555;
+      border: 1px solid #cfd8dc;
+      background: #ffffff;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+    #image-size {
+      width: 140px;
+    }
+  </style>
+</head>
+<body>
+  <h2>WhatsApp Chat Viewer</h2>
+  <input type="file" id="fileInput" accept=".txt">
+  <div id="media-controls">
+    <button id="show-images" class="control-button active" type="button">Afficher images</button>
+    <button id="hide-images" class="control-button" type="button">Masquer images</button>
+    <label id="image-size-control" for="image-size">
+      <span>Largeur images</span>
+      <input id="image-size" type="range" min="80" max="320" step="10" value="120">
+      <span id="image-size-value">120px</span>
+    </label>
+  </div>
+  <div id="app">
+    <div id="timeline">
+      <div id="timeline-title">Frise</div>
+      <div id="timeline-bars"></div>
+    </div>
+    <div id="chat-container"></div>
+  </div>
+  
+  <script>
+    // Global variables for infinite scroll loading
+    let allMessages = [];
+    let renderItems = [];
+    let currentIndex = 0;
+    const chunkSize = 100;
+    const chatContainer = document.getElementById("chat-container");
+    const timelineBars = document.getElementById("timeline-bars");
+    const timelineTitle = document.getElementById("timeline-title");
+    const showImagesButton = document.getElementById("show-images");
+    const hideImagesButton = document.getElementById("hide-images");
+    const imageSizeInput = document.getElementById("image-size");
+    const imageSizeValue = document.getElementById("image-size-value");
+
+    let activeDayKey = null; // null = all
+    let activeMonthKey = null; // "YYYY-MM"
+    let activeYearKey = null; // "YYYY"
+    let lastGroupElement = null;
+
+    const IMAGE_EXTS = ["jpg", "png", "jpeg", "gif", "webp"];
+    const VIDEO_EXTS = ["mp4", "webm", "ogg"];
+
+    const PERIODS = [
+      { name: "nuit", start: 22, end: 24, theme: "night" },
+      { name: "nuit", start: 0, end: 5, theme: "night" },
+      { name: "matin", start: 5, end: 12, theme: "day" },
+      { name: "après-midi", start: 12, end: 17, theme: "day" },
+      { name: "soir", start: 17, end: 22, theme: "night" }
+    ];
+
+    function parseDate(dateStr, timeStr) {
+      const [dd, mm, yyyy] = dateStr.split("/").map(Number);
+      const [hh, min, ss] = timeStr.split(":").map(Number);
+      return new Date(yyyy, mm - 1, dd, hh, min, ss || 0);
+    }
+
+    function getPeriod(dateObj) {
+      const hour = dateObj.getHours();
+      for (const p of PERIODS) {
+        if (hour >= p.start && hour < p.end) {
+          return p;
+        }
+      }
+      return PERIODS[2];
+    }
+
+    function formatDateFr(dateObj) {
+      return dateObj.toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    }
+    function parseMessageContent(message) {
+      const cleanedMessage = message.replace(/\u200E/g, "").trim();
+      const attachmentRegex = /<\s*pi(?:e|\u00e8|\u00c3\u00a8)ce jointe\s*:\s*([^>]+)\s*>/ig;
+      const fileAttachedText = "(file attached)";
+      let fileNames = [];
+      let textOnly = cleanedMessage;
+
+      const attachmentMatches = [...cleanedMessage.matchAll(attachmentRegex)];
+      if (attachmentMatches.length > 0) {
+        fileNames = attachmentMatches.map(match => match[1].trim()).filter(Boolean);
+        attachmentRegex.lastIndex = 0;
+        textOnly = cleanedMessage.replace(attachmentRegex, "").trim();
+      } else if (cleanedMessage.includes(fileAttachedText)) {
+        const inferred = cleanedMessage.replace(fileAttachedText, "").trim();
+        if (inferred) {
+          fileNames = [inferred];
+        }
+        textOnly = "";
+      }
+
+      return { textOnly, fileNames };
+    }
+
+    function isImageFile(name) {
+      const ext = name.split('.').pop().toLowerCase();
+      return IMAGE_EXTS.includes(ext);
+    }
+
+    function getInitials(name) {
+      const cleaned = (name || "").trim();
+      if (!cleaned) return "?";
+      const parts = cleaned.split(/\s+/).filter(Boolean);
+      const first = parts[0]?.charAt(0) || "";
+      const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+      return (first + last).toUpperCase();
+    }
+    function mergeImageSequences(messages) {
+      const merged = [];
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        const { textOnly, fileNames } = parseMessageContent(msg.message);
+        const isImageOnly = textOnly === "" && fileNames.length > 0 && fileNames.every(isImageFile);
+        if (!isImageOnly) {
+          merged.push(msg);
+          continue;
+        }
+
+        const groupedFileNames = [...fileNames];
+        let j = i + 1;
+        for (; j < messages.length; j++) {
+          const next = messages[j];
+          if (next.sender !== msg.sender) break;
+          const nextContent = parseMessageContent(next.message);
+          const nextIsImageOnly = nextContent.textOnly === "" && nextContent.fileNames.length > 0 && nextContent.fileNames.every(isImageFile);
+          if (!nextIsImageOnly) break;
+          groupedFileNames.push(...nextContent.fileNames);
+        }
+
+        const groupedMessage = groupedFileNames.map(name => `< piece jointe : ${name} >`).join(" ");
+        merged.push({ ...msg, message: groupedMessage });
+        i = j - 1;
+      }
+      return merged;
+    }
+
+    function setImagesVisible(visible) {
+      chatContainer.classList.toggle("hide-images", !visible);
+      showImagesButton.classList.toggle("active", visible);
+      hideImagesButton.classList.toggle("active", !visible);
+    }
+
+    showImagesButton.addEventListener("click", () => setImagesVisible(true));
+    hideImagesButton.addEventListener("click", () => setImagesVisible(false));
+    function setImageSize(value) {
+      const pxValue = `${value}px`;
+      document.documentElement.style.setProperty("--image-size", pxValue);
+      imageSizeValue.textContent = pxValue;
+    }
+    setImageSize(imageSizeInput.value);
+    imageSizeInput.addEventListener("input", (event) => setImageSize(event.target.value));
+
+    // Function to create a chat bubble element
+    function createMessageElement(date, time, sender, message, isUser) {
+      const row = document.createElement("div");
+      row.classList.add("message-row", isUser ? "user" : "other");
+
+      const initials = document.createElement("div");
+      initials.classList.add("initials");
+      initials.textContent = getInitials(sender);
+      row.appendChild(initials);
+
+      let msgElement = document.createElement("div");
+      msgElement.classList.add("message", isUser ? "user" : "other");
+
+      const { textOnly, fileNames } = parseMessageContent(message);
+
+      const hasText = Boolean(textOnly);
+      const hasMedia = fileNames.length > 0;
+      const isMediaOnly = !hasText && hasMedia;
+      if (isMediaOnly) {
+        row.classList.add("media-only");
+        msgElement.classList.add("media-only");
+      }
+
+      if (hasText) {
+        const textEl = document.createElement("div");
+        textEl.classList.add("message-text");
+        textEl.textContent = textOnly;
+        msgElement.appendChild(textEl);
+      }
+
+      if (hasMedia) {
+        const mediaWrap = document.createElement("div");
+        mediaWrap.classList.add("media");
+
+        const allImages = fileNames.every(isImageFile);
+        if (allImages) {
+          mediaWrap.classList.add("media-images-only");
+        }
+
+        if (fileNames.length > 1 && allImages) {
+          const grid = document.createElement("div");
+          grid.classList.add("image-grid");
+          fileNames.forEach(name => {
+            const img = document.createElement("img");
+            img.src = encodeURI(name);
+            grid.appendChild(img);
+          });
+          mediaWrap.appendChild(grid);
+        } else {
+          fileNames.forEach(name => {
+            const fileExt = name.split('.').pop().toLowerCase();
+            let mediaElement;
+            const fileUrl = encodeURI(name);
+            if (IMAGE_EXTS.includes(fileExt)) {
+              mediaElement = document.createElement("img");
+              mediaElement.src = fileUrl;
+            } else if (VIDEO_EXTS.includes(fileExt)) {
+              mediaElement = document.createElement("video");
+              mediaElement.src = fileUrl;
+              mediaElement.controls = true;
+            } else {
+              mediaElement = document.createElement("a");
+              mediaElement.href = fileUrl;
+              mediaElement.innerText = "Download File";
+              mediaElement.classList.add("download-link");
+              mediaElement.target = "_blank";
+            }
+            mediaWrap.appendChild(mediaElement);
+          });
+        }
+        msgElement.appendChild(mediaWrap);
+      }
+      row.appendChild(msgElement);
+      return row;
+    }
+
+    function createHeaderElement(dateObj, period) {
+      const group = document.createElement("div");
+      group.classList.add("time-group", period.theme);
+      const header = document.createElement("div");
+      header.classList.add("time-header");
+      header.textContent = `${formatDateFr(dateObj)} — ${period.name}`;
+      group.appendChild(header);
+      return group;
+    }
+
+    function buildRenderItems(messages) {
+      const items = [];
+      let lastKey = "";
+      const firstSenderByDay = new Map();
+      messages.forEach(msg => {
+        const dateObj = parseDate(msg.date, msg.time);
+        const period = getPeriod(dateObj);
+        const dayKey = dateObj.toISOString().slice(0, 10);
+        if (!firstSenderByDay.has(dayKey)) {
+          firstSenderByDay.set(dayKey, msg.sender);
+        }
+        const isUser = msg.sender === firstSenderByDay.get(dayKey);
+        const key = `${dayKey}-${period.name}`;
+        if (key !== lastKey) {
+          items.push({
+            type: "header",
+            dateObj,
+            period
+          });
+          lastKey = key;
+        }
+        items.push({
+          type: "message",
+          data: msg,
+          isUser
+        });
+      });
+      return items;
+    }
+
+    function renderFromFilter(dayKey) {
+      activeDayKey = dayKey;
+      activeMonthKey = null;
+      activeYearKey = null;
+      const filteredRaw = dayKey
+        ? allMessages.filter(m => parseDate(m.date, m.time).toISOString().slice(0, 10) === dayKey)
+        : allMessages.slice();
+      const filtered = mergeImageSequences(filteredRaw);
+      renderItems = buildRenderItems(filtered);
+      chatContainer.innerHTML = "";
+      currentIndex = 0;
+      lastGroupElement = null;
+      loadNextMessages();
+      updateTimelineActive();
+    }
+
+    function renderFromMonth(monthKey) {
+      activeDayKey = null;
+      activeMonthKey = monthKey;
+      activeYearKey = null;
+      const filteredRaw = allMessages.filter(m => {
+        const key = parseDate(m.date, m.time).toISOString().slice(0, 7);
+        return key === monthKey;
+      });
+      const filtered = mergeImageSequences(filteredRaw);
+      renderItems = buildRenderItems(filtered);
+      chatContainer.innerHTML = "";
+      currentIndex = 0;
+      lastGroupElement = null;
+      loadNextMessages();
+      updateTimelineActive();
+    }
+
+    function renderFromYear(yearKey) {
+      activeDayKey = null;
+      activeMonthKey = null;
+      activeYearKey = yearKey;
+      const filteredRaw = allMessages.filter(m => {
+        const key = parseDate(m.date, m.time).getFullYear().toString();
+        return key === yearKey;
+      });
+      const filtered = mergeImageSequences(filteredRaw);
+      renderItems = buildRenderItems(filtered);
+      chatContainer.innerHTML = "";
+      currentIndex = 0;
+      lastGroupElement = null;
+      loadNextMessages();
+      updateTimelineActive();
+    }
+
+    function updateTimelineActive() {
+      const bars = timelineBars.querySelectorAll(".timeline-bar");
+      bars.forEach(bar => {
+        const key = bar.getAttribute("data-day");
+        bar.classList.toggle("active", key === activeDayKey);
+      });
+      const labels = timelineBars.querySelectorAll(".timeline-label");
+      labels.forEach(label => {
+        const monthKey = label.getAttribute("data-month");
+        const yearKey = label.getAttribute("data-year");
+        label.classList.toggle("active", monthKey === activeMonthKey || yearKey === activeYearKey);
+      });
+      const allFilter = document.getElementById("timeline-all");
+      if (allFilter) {
+        allFilter.classList.toggle("active", activeDayKey === null && activeMonthKey === null && activeYearKey === null);
+      }
+    }
+
+    function buildTimeline(messages) {
+      timelineBars.innerHTML = "";
+      const counts = new Map();
+      messages.forEach(msg => {
+        const dateObj = parseDate(msg.date, msg.time);
+        const dayKey = dateObj.toISOString().slice(0, 10);
+        counts.set(dayKey, (counts.get(dayKey) || 0) + 1);
+      });
+      const entries = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+      const maxCount = Math.max(1, ...entries.map(e => e[1]));
+
+      // Add "All" filter
+      const allFilter = document.createElement("div");
+      allFilter.id = "timeline-all";
+      allFilter.classList.add("timeline-filter");
+      allFilter.textContent = "Toute la période";
+      allFilter.addEventListener("click", () => renderFromFilter(null));
+      timelineBars.appendChild(allFilter);
+
+      let lastMonthKey = "";
+      let lastYearKey = "";
+      entries.forEach(([dayKey, count]) => {
+        const [year, month] = dayKey.split("-");
+        const monthKey = `${year}-${month}`;
+        if (year !== lastYearKey) {
+          const yearLabel = document.createElement("div");
+          yearLabel.classList.add("timeline-label");
+          yearLabel.textContent = year;
+          yearLabel.setAttribute("data-year", year);
+          timelineBars.appendChild(yearLabel);
+          lastYearKey = year;
+          lastMonthKey = "";
+        }
+        if (monthKey !== lastMonthKey) {
+          const dateObj = new Date(Number(year), Number(month) - 1, 1);
+          const monthLabel = document.createElement("div");
+          monthLabel.classList.add("timeline-label");
+          monthLabel.textContent = dateObj.toLocaleDateString("fr-FR", { month: "long" });
+          monthLabel.setAttribute("data-month", monthKey);
+          timelineBars.appendChild(monthLabel);
+          lastMonthKey = monthKey;
+        }
+        const row = document.createElement("div");
+        row.classList.add("timeline-row");
+        const bar = document.createElement("div");
+        bar.classList.add("timeline-bar");
+        bar.setAttribute("data-day", dayKey);
+        const fill = document.createElement("span");
+        const ratio = count / maxCount;
+        const scaledRatio = Math.sqrt(ratio);
+        const widthPercent = Math.max(12, Math.round(scaledRatio * 100));
+        fill.style.width = `${widthPercent}%`;
+        fill.style.background = `rgba(76, 175, 80, ${0.35 + scaledRatio * 0.65})`;
+        bar.title = `${dayKey} — ${count} messages`;
+        bar.appendChild(fill);
+        bar.addEventListener("click", () => renderFromFilter(dayKey));
+        row.appendChild(bar);
+        timelineBars.appendChild(row);
+      });
+      updateTimelineActive();
+    }
+
+    // Event delegation for reliability
+    timelineBars.addEventListener("click", (event) => {
+      const bar = event.target.closest(".timeline-bar");
+      if (bar && bar.getAttribute("data-day")) {
+        renderFromFilter(bar.getAttribute("data-day"));
+        return;
+      }
+      const monthLabel = event.target.closest(".timeline-label[data-month]");
+      if (monthLabel) {
+        renderFromMonth(monthLabel.getAttribute("data-month"));
+        return;
+      }
+      const yearLabel = event.target.closest(".timeline-label[data-year]");
+      if (yearLabel) {
+        renderFromYear(yearLabel.getAttribute("data-year"));
+        return;
+      }
+      const allFilter = event.target.closest("#timeline-all");
+      if (allFilter) {
+        renderFromFilter(null);
+      }
+    });
+
+    // Function to load the next batch of messages
+    function loadNextMessages() {
+      let endIndex = Math.min(currentIndex + chunkSize, renderItems.length);
+      let currentGroup = lastGroupElement;
+      for (let i = currentIndex; i < endIndex; i++) {
+        const item = renderItems[i];
+        if (item.type === "header") {
+          currentGroup = createHeaderElement(item.dateObj, item.period);
+          chatContainer.appendChild(currentGroup);
+          lastGroupElement = currentGroup;
+        } else {
+          const { date, time, sender, message } = item.data;
+          const msgElement = createMessageElement(date, time, sender, message, item.isUser);
+          if (currentGroup) {
+            currentGroup.appendChild(msgElement);
+          } else {
+            chatContainer.appendChild(msgElement);
+          }
+        }
+      }
+      currentIndex = endIndex;
+    }
+
+    // Event listener for infinite scroll: load more messages when near the bottom
+    chatContainer.addEventListener("scroll", function() {
+      if (chatContainer.scrollTop + chatContainer.clientHeight >= chatContainer.scrollHeight - 50) {
+        if (currentIndex < allMessages.length) {
+          loadNextMessages();
+        }
+      }
+    });
+
+    // File input event: parse file and prepare messages for infinite scroll
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        // Reset chat container and global message variables
+        chatContainer.innerHTML = "";
+        allMessages = [];
+        renderItems = [];
+        currentIndex = 0;
+        activeDayKey = null;
+        lastGroupElement = null;
+        
+        // Regex to match: [DD/MM/YYYY HH:MM:SS] Sender: Message
+        const lineRegex = /^\[(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\]\s*(.*?):\s*(.*)$/;
+        const lines = e.target.result.split(/\r?\n/);
+
+        let current = null;
+        lines.forEach(rawLine => {
+          const line = rawLine.replace(/\u200E/g, "").replace(/^\uFEFF/, "");
+          const match = line.match(lineRegex);
+          if (match) {
+            if (current) {
+              allMessages.push(current);
+            }
+            const [_, date, time, sender, message] = match;
+            current = { date, time, sender, message };
+          } else if (current) {
+            current.message += "\n" + line;
+          }
+        });
+        if (current) {
+          allMessages.push(current);
+        }
+        buildTimeline(allMessages);
+        // Initially load the first batch of messages
+        renderFromFilter(null);
+      };
+      reader.readAsText(file, "UTF-8");
+    });
+  </script>
+</body>
+</html>

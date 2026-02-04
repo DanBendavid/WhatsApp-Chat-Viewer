@@ -1,0 +1,8 @@
+[01/02/2026 09:12:05] Alice: Salut! Ceci est un message de test.
+[01/02/2026 09:12:44] Bob: Hello! Testing English line.
+[01/02/2026 09:13:10] Alice: Message avec piece jointe < piece jointe : 00000001-PHOTO-2026-02-01-09-13-10.jpg >
+[01/02/2026 09:14:02] Bob: Message avec video < piece jointe : 00000002-VIDEO-2026-02-01-09-14-02.mp4 >
+[01/02/2026 09:15:18] Alice: Message multi-ligne commence ici
+et continue sur la ligne suivante pour tester.
+[02/02/2026 18:40:00] Bob: Test avec plusieurs photos < piece jointe : 00000003-PHOTO-2026-02-02-18-40-00.jpg > < piece jointe : 00000004-PHOTO-2026-02-02-18-40-01.jpg >
+[02/02/2026 18:41:22] Alice: Dernier message de test.

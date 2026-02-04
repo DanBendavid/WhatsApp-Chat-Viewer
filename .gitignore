@@ -1,0 +1,37 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyd
+.mypy_cache/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local config
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated chat outputs
+_chat_pages/
+_chat_corrected*.txt
+_chat_partial.txt
+_chat_corrected_partial.txt
+_chat_correctedA.txt
+
+# Media exports
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.mp4
+*.webm
+*.ogg
+*.pdf
+!ViewerImage.jpg
