@@ -258,11 +258,6 @@
       margin-top: 5px;
       display: block;
     }
-    /* File input styling */
-    #fileInput {
-      margin: 10px auto;
-      display: block;
-    }
     #media-controls {
       display: flex;
       justify-content: center;
@@ -317,7 +312,7 @@
       font-size: 12px;
     }
     #load-controls {
-      display: none;
+      display: flex;
       justify-content: center;
       gap: 8px;
       align-items: center;
@@ -329,6 +324,9 @@
     #load-hint {
       max-width: 640px;
       text-align: center;
+    }
+    #pick-folder {
+      display: inline-flex;
     }
     #print-header,
     #print-footer {
@@ -342,7 +340,7 @@
       h2,
       #media-controls,
       #load-controls,
-      #fileInput {
+      #folderInput {
         display: none !important;
       }
       #app {
@@ -438,7 +436,7 @@
   <div id="print-header" aria-hidden="true">
     <span id="print-title">WhatsApp Chat Viewer</span>
   </div>
-  <input type="file" id="fileInput" accept=".txt">
+  <input type="file" id="folderInput" webkitdirectory multiple>
   <div id="media-controls">
     <button id="show-images" class="control-button active" type="button">Afficher images</button>
     <button id="hide-images" class="control-button" type="button">Masquer images</button>
@@ -455,8 +453,8 @@
     </label>
   </div>
   <div id="load-controls">
-    <button id="pick-chat" class="control-button" type="button">Choisir _chat.txt</button>
-    <span id="load-hint">Le navigateur bloque souvent l'accès automatique aux fichiers locaux. Lancez un serveur local (ex: Live Server) ou choisissez le fichier une fois.</span>
+    <button id="pick-folder" class="control-button" type="button">Choisir dossier (chat + médias)</button>
+    <span id="load-hint">Choisissez le dossier qui contient <strong>_chat.txt</strong> et les médias. Le navigateur bloque souvent l'accès automatique aux fichiers locaux.</span>
   </div>
   <div id="app">
     <div id="timeline">
@@ -483,15 +481,15 @@
     const imageSizeInput = document.getElementById("image-size");
     const imageSizeValue = document.getElementById("image-size-value");
     const userSelect = document.getElementById("user-select");
-    const fileInput = document.getElementById("fileInput");
+    const folderInput = document.getElementById("folderInput");
     const loadControls = document.getElementById("load-controls");
-    const pickChatButton = document.getElementById("pick-chat");
+    const pickFolderButton = document.getElementById("pick-folder");
     const printTitle = document.getElementById("print-title");
-    if (fileInput) {
-      fileInput.style.display = "none";
+    if (folderInput) {
+      folderInput.style.display = "none";
     }
     if (loadControls) {
-      loadControls.style.display = "none";
+      loadControls.style.display = "flex";
     }
     if (printTitle) {
       const heading = document.querySelector("h2");
@@ -507,6 +505,89 @@
 
     const IMAGE_EXTS = ["jpg", "png", "jpeg", "gif", "webp"];
     const VIDEO_EXTS = ["mp4", "webm", "ogg"];
+
+    const mediaFilesByNameLower = new Map(); // name -> File
+    const mediaObjectUrlCache = new Map(); // name -> object URL
+
+    function clearMediaCache() {
+      for (const url of mediaObjectUrlCache.values()) {
+        try { URL.revokeObjectURL(url); } catch {}
+      }
+      mediaObjectUrlCache.clear();
+    }
+
+    function getMediaObjectUrl(name) {
+      const key = normalizeMediaName(name).toLowerCase();
+      if (!key) return "";
+      const cached = mediaObjectUrlCache.get(key);
+      if (cached) return cached;
+      const file = mediaFilesByNameLower.get(key);
+      if (!file) return "";
+      const url = URL.createObjectURL(file);
+      mediaObjectUrlCache.set(key, url);
+      return url;
+    }
+
+    function normalizeMediaName(name) {
+      return (name || "")
+        .toString()
+        .replace(/\u200E/g, "")
+        .trim();
+    }
+
+    let chatBaseDir = "";
+
+    function getBaseDir() {
+      const href = window.location.href;
+      return href.endsWith("/") ? href : href.slice(0, href.lastIndexOf("/") + 1);
+    }
+
+    function getMediaBaseDir() {
+      return chatBaseDir || getBaseDir();
+    }
+
+    function setChatBaseDirFromUrl(url) {
+      try {
+        const base = new URL(".", url).toString();
+        chatBaseDir = base;
+      } catch {
+        chatBaseDir = "";
+      }
+    }
+
+    function buildMediaUrl(name) {
+      const normalized = normalizeMediaName(name);
+      if (!normalized) return "";
+      const lower = normalized.toLowerCase();
+      if (
+        lower.startsWith("http://") ||
+        lower.startsWith("https://") ||
+        lower.startsWith("file://") ||
+        lower.startsWith("blob:")
+      ) {
+        return normalized;
+      }
+      const rel = normalized.replace(/\\/g, "/").replace(/^\/+/, "");
+      const encoded = rel.split("/").map(encodeURIComponent).join("/");
+      return new URL(encoded, getMediaBaseDir()).toString();
+    }
+
+    function applyResolvedMediaUrl(mediaElement, name) {
+      const url = getMediaObjectUrl(name) || buildMediaUrl(name);
+      if (!url) return;
+
+      if (mediaElement.tagName === "A") {
+        mediaElement.href = url;
+      } else {
+        mediaElement.src = url;
+      }
+    }
+
+    function resolveMediaIntoElement(mediaElement, name) {
+      const normalized = normalizeMediaName(name);
+      if (!normalized) return;
+      applyResolvedMediaUrl(mediaElement, normalized);
+    }
 
     const PERIODS = [
       { name: "nuit", start: 22, end: 24, theme: "night" },
@@ -589,7 +670,7 @@
     }
     function parseMessageContent(message) {
       const cleanedMessage = message.replace(/\u200E/g, "").trim();
-      const attachmentRegex = /<\s*pi(?:e|\u00e8|\u00c3\u00a8)ce jointe\s*:\s*([^>]+)\s*>/ig;
+      const attachmentRegex = /<\s*(?:pi(?:e|\u00e8|\u00c3\u00a8)ce jointe|fichier joint|attached)\s*:\s*([^>]+)\s*>/ig;
       const fileAttachedText = "(file attached)";
       let fileNames = [];
       let textOnly = cleanedMessage;
@@ -608,6 +689,53 @@
       }
 
       return { textOnly, fileNames };
+    }
+
+    function splitUrlToken(token) {
+      const match = token.match(/^(https?:\/\/[^\s<>"']+?)([).,!?:;]+)?$/i);
+      if (!match) return [token, ""];
+      return [match[1], match[2] || ""];
+    }
+
+    function linkifyText(text) {
+      const fragment = document.createDocumentFragment();
+      const urlRegex = /(https?:\/\/[^\s<>"']+)/ig;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = urlRegex.exec(text)) !== null) {
+        const before = text.slice(lastIndex, match.index);
+        if (before) {
+          fragment.appendChild(document.createTextNode(before));
+        }
+
+        const [urlPart, trailing] = splitUrlToken(match[0]);
+        const anchor = document.createElement("a");
+        anchor.href = urlPart;
+        let displayText = urlPart;
+        try {
+          const parsed = new URL(urlPart);
+          if (parsed.host) {
+            displayText = parsed.host;
+          }
+        } catch {}
+        anchor.textContent = displayText;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        fragment.appendChild(anchor);
+
+        if (trailing) {
+          fragment.appendChild(document.createTextNode(trailing));
+        }
+
+        lastIndex = match.index + match[0].length;
+      }
+
+      const remaining = text.slice(lastIndex);
+      if (remaining) {
+        fragment.appendChild(document.createTextNode(remaining));
+      }
+      return fragment;
     }
 
     function isImageFile(name) {
@@ -713,7 +841,7 @@
       if (hasText) {
         const textEl = document.createElement("div");
         textEl.classList.add("message-text");
-        textEl.textContent = textOnly;
+        textEl.appendChild(linkifyText(textOnly));
         msgElement.appendChild(textEl);
       }
 
@@ -735,7 +863,8 @@
           grid.classList.add("image-grid");
           fileNames.forEach(name => {
             const img = document.createElement("img");
-            img.src = encodeURI(name);
+            img.loading = "lazy";
+            resolveMediaIntoElement(img, name);
             grid.appendChild(img);
           });
           mediaWrap.appendChild(grid);
@@ -743,20 +872,20 @@
           fileNames.forEach(name => {
             const fileExt = name.split('.').pop().toLowerCase();
             let mediaElement;
-            const fileUrl = encodeURI(name);
             if (IMAGE_EXTS.includes(fileExt)) {
               mediaElement = document.createElement("img");
-              mediaElement.src = fileUrl;
+              mediaElement.loading = "lazy";
+              resolveMediaIntoElement(mediaElement, name);
             } else if (VIDEO_EXTS.includes(fileExt)) {
               mediaElement = document.createElement("video");
-              mediaElement.src = fileUrl;
               mediaElement.controls = true;
+              resolveMediaIntoElement(mediaElement, name);
             } else {
               mediaElement = document.createElement("a");
-              mediaElement.href = fileUrl;
-              mediaElement.innerText = "Download File";
+              mediaElement.innerText = `Télécharger: ${name}`;
               mediaElement.classList.add("download-link");
               mediaElement.target = "_blank";
+              resolveMediaIntoElement(mediaElement, name);
             }
             mediaWrap.appendChild(mediaElement);
           });
@@ -1099,75 +1228,7 @@
       buildTimeline(allMessages);
       renderFromFilter(null);
       if (loadControls) {
-        loadControls.style.display = "none";
-      }
-      if (fileInput) {
-        fileInput.style.display = "none";
-      }
-    }
-
-    function supportsFileAccess() {
-      return typeof window.showOpenFilePicker === "function" && !!window.indexedDB;
-    }
-
-    function openHandleDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open("whatsapp-viewer", 1);
-        request.onupgradeneeded = () => {
-          request.result.createObjectStore("handles");
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    }
-
-    function txDone(tx) {
-      return new Promise((resolve, reject) => {
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.onabort = () => reject(tx.error);
-      });
-    }
-
-    async function getStoredHandle() {
-      const db = await openHandleDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("handles", "readonly");
-        const store = tx.objectStore("handles");
-        const request = store.get("chatFile");
-        request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () => reject(request.error);
-      });
-    }
-
-    async function storeHandle(handle) {
-      const db = await openHandleDB();
-      const tx = db.transaction("handles", "readwrite");
-      tx.objectStore("handles").put(handle, "chatFile");
-      await txDone(tx);
-    }
-
-    async function tryLoadStoredHandle() {
-      if (!supportsFileAccess()) return false;
-      let handle = null;
-      try {
-        handle = await getStoredHandle();
-      } catch (error) {
-        console.warn("Stored handle read failed:", error);
-        return false;
-      }
-      if (!handle) return false;
-      try {
-        const perm = handle.queryPermission ? await handle.queryPermission({ mode: "read" }) : "granted";
-        if (perm !== "granted") return false;
-        const file = await handle.getFile();
-        const text = await file.text();
-        if (!text.trim()) return false;
-        loadChatFromText(text);
-        return true;
-      } catch (error) {
-        console.warn("Stored handle load failed:", error);
-        return false;
+        loadControls.style.display = "flex";
       }
     }
 
@@ -1175,85 +1236,84 @@
       console.error("Auto-load _chat.txt failed:", error);
       chatContainer.innerHTML =
         "<p style=\"padding:12px;color:#666;\">Impossible de charger automatiquement <strong>_chat.txt</strong>. " +
-        "Ouvrez ce fichier via un serveur local (ex: Live Server) ou choisissez le fichier ci-dessous.</p>";
+        "Choisissez le dossier contenant <strong>_chat.txt</strong> et les médias.</p>";
       if (loadControls) {
         loadControls.style.display = "flex";
       }
-      if (fileInput && !supportsFileAccess()) {
-        fileInput.style.display = "block";
+      if (pickFolderButton) {
+        pickFolderButton.style.display = "inline-flex";
       }
     }
 
-    async function chooseChatFile() {
-      if (supportsFileAccess()) {
-        try {
-          const [handle] = await window.showOpenFilePicker({
-            multiple: false,
-            types: [
-              {
-                description: "Fichiers texte",
-                accept: { "text/plain": [".txt"] }
-              }
-            ]
-          });
-          if (!handle) return;
-          const file = await handle.getFile();
-          const text = await file.text();
-          if (!text.trim()) {
-            throw new Error("Empty file");
-          }
-          loadChatFromText(text);
-          try {
-            await storeHandle(handle);
-          } catch (error) {
-            console.warn("Store handle failed:", error);
-          }
-        } catch (error) {
-          console.error("Manual pick failed:", error);
+    async function loadChatFromFolderFiles(files) {
+      clearMediaCache();
+      mediaFilesByNameLower.clear();
+      const fileList = Array.from(files || []);
+      fileList.forEach(file => {
+        const key = (file.name || "").toLowerCase();
+        if (key && !mediaFilesByNameLower.has(key)) {
+          mediaFilesByNameLower.set(key, file);
         }
-        return;
+      });
+
+      const chatFile =
+        mediaFilesByNameLower.get("_chat_corrected.txt") ||
+        mediaFilesByNameLower.get("_chat.txt");
+      if (!chatFile) {
+        throw new Error("Folder selection does not include _chat.txt");
       }
-      if (fileInput) {
-        fileInput.click();
+
+      const text = await chatFile.text();
+      if (!text.trim()) {
+        throw new Error("Empty chat file");
       }
+      chatBaseDir = "";
+      loadChatFromText(text);
     }
 
     async function autoLoadChatFile() {
-      const chatUrl = new URL("_chat.txt", window.location.href);
+      const candidates = ["_chat_corrected.txt", "_chat.txt"];
       try {
-        const response = await fetch(chatUrl.toString(), { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+        const baseHref = window.location.href;
+        const baseDir = baseHref.endsWith("/") ? baseHref : baseHref.slice(0, baseHref.lastIndexOf("/") + 1);
+        let text = "";
+        for (const name of candidates) {
+          const chatUrl = new URL(name, baseDir);
+          const response = await fetch(chatUrl.toString(), { cache: "no-store" });
+          if (!response.ok) continue;
+          text = await response.text();
+          if (text.trim()) {
+            setChatBaseDirFromUrl(chatUrl.toString());
+            break;
+          }
         }
-        const text = await response.text();
         if (!text.trim()) {
-          throw new Error("Empty file");
+          throw new Error("Empty or missing chat file");
         }
         loadChatFromText(text);
       } catch (error) {
-        const loadedFromHandle = await tryLoadStoredHandle();
-        if (loadedFromHandle) return;
         showLoadFailure(error);
       }
     }
 
-    // File input event: parse file and prepare messages for infinite scroll
-    if (fileInput) {
-      fileInput.addEventListener("change", function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          loadChatFromText(e.target.result || "");
-        };
-        reader.readAsText(file, "UTF-8");
+    if (folderInput) {
+      folderInput.addEventListener("change", async function(event) {
+        const files = event.target.files;
+        if (!files || !files.length) return;
+        try {
+          await loadChatFromFolderFiles(files);
+        } catch (error) {
+          console.error("Folder load failed:", error);
+          showLoadFailure(error);
+        }
       });
     }
 
-    if (pickChatButton) {
-      pickChatButton.addEventListener("click", function() {
-        chooseChatFile();
+    if (pickFolderButton) {
+      pickFolderButton.addEventListener("click", function() {
+        if (folderInput) {
+          folderInput.click();
+        }
       });
     }
 
