@@ -335,10 +335,6 @@
       display: none;
     }
     @media print {
-      :root {
-        --print-header-height: 14mm;
-        --print-footer-height: 12mm;
-      }
       body {
         background: #ffffff;
         padding: 0;
@@ -363,22 +359,18 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        position: fixed;
-        left: 0;
-        right: 0;
-        height: var(--print-header-height);
-        padding: 0 12mm;
+        width: 100%;
         font-size: 11px;
         color: #444;
-        background: #ffffff;
       }
       #print-header {
-        top: 0;
+        position: running(print-header);
+        padding-bottom: 2mm;
         border-bottom: 1px solid #d1d7db;
       }
       #print-footer {
-        bottom: 0;
-        height: var(--print-footer-height);
+        position: running(print-footer);
+        padding-top: 2mm;
         border-top: 1px solid #d1d7db;
       }
 
@@ -391,23 +383,52 @@
       .message {
         max-width: 100%;
       }
-      .time-group,
-      .message-row,
-      .message,
-      .message-text {
+      .message-row {
+        margin: 2mm 0;
         break-inside: avoid;
         page-break-inside: avoid;
+        -webkit-column-break-inside: avoid;
+      }
+      .time-group {
+        break-inside: auto;
+        page-break-inside: auto;
       }
       .time-header {
         break-after: avoid;
         page-break-after: avoid;
+        orphans: 2;
       }
       .message-text {
         orphans: 3;
         widows: 3;
       }
+      .media img {
+        max-width: 60mm !important;
+        height: auto;
+      }
+      .image-grid {
+        grid-template-columns: repeat(2, minmax(0, 40mm));
+        gap: 3mm;
+      }
+      .message.user {
+        background-color: #bbdefb;
+        border: 1px solid #90caf9;
+      }
+      .message.other {
+        border: 1px solid #bdbdbd;
+      }
       @page {
-        margin: 18mm 12mm 16mm;
+        size: A4;
+        margin: 20mm 12mm 18mm;
+        @top-left {
+          content: element(print-header);
+        }
+        @bottom-left {
+          content: element(print-footer);
+        }
+        @bottom-right {
+          content: "Page " counter(page) " / " counter(pages);
+        }
       }
     }
   </style>
