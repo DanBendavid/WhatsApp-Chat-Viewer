@@ -51,7 +51,7 @@ Then open `http://localhost:8000/whatsapp-viewerV2.html`.
 - Custom print header/footer are enabled (title + page number).
 - To remove the browser header/footer, disable the option in the print dialog.
 
-## `_chat.txt` correction script
+## Correction script
 
 The script `correct_chat_local.py` fixes spelling and grammar via the OpenAI API.
 
