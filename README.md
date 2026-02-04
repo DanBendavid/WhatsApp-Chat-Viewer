@@ -27,6 +27,8 @@ Visualiseur local pour un export WhatsApp (`_chat.txt`) avec timeline, médias e
 1. Récupérer le fichier texte exporté et le renommer en `_chat.txt`.
 1. Si vous avez choisi **Inclure les médias**, décompressez l’archive si besoin.
 1. Placer `_chat.txt` et les médias dans le même dossier que `whatsapp-viewerV2.html`.
+1. Les dates **JJ/MM/AAAA** sont supportées. Les exports **US (MM/DD/YYYY)** sont aussi détectés automatiquement. En cas d’ambiguïté (ex: 01/02/2026), le format jour/mois est privilégié.
+1. Le format anglais entre crochets est supporté : `[MM/DD/YY, H:MM:SS AM] Nom: Message` (avec `AM/PM`).
 
 ## Démarrage rapide
 

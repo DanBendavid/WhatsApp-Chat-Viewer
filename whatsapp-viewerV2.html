@@ -482,6 +482,7 @@
     let activeYearKey = null; // "YYYY"
     let lastGroupElement = null;
     let selectedUser = null; // The user whose messages appear on the right
+    let dateOrder = "DMY"; // "DMY" or "MDY"
 
     const IMAGE_EXTS = ["jpg", "png", "jpeg", "gif", "webp"];
     const VIDEO_EXTS = ["mp4", "webm", "ogg"];
@@ -494,10 +495,57 @@
       { name: "soir", start: 17, end: 22, theme: "night" }
     ];
 
+    function parseTime(timeStr) {
+      const trimmed = timeStr.trim();
+      const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+      if (ampmMatch) {
+        let hour = Number(ampmMatch[1]);
+        const minute = Number(ampmMatch[2]);
+        const second = Number(ampmMatch[3] || 0);
+        const meridiem = ampmMatch[4].toUpperCase();
+        if (meridiem === "PM" && hour < 12) hour += 12;
+        if (meridiem === "AM" && hour === 12) hour = 0;
+        return { hour, minute, second };
+      }
+      const [hh, min, ss] = trimmed.split(":").map(Number);
+      return { hour: hh, minute: min, second: ss || 0 };
+    }
+
     function parseDate(dateStr, timeStr) {
-      const [dd, mm, yyyy] = dateStr.split("/").map(Number);
-      const [hh, min, ss] = timeStr.split(":").map(Number);
-      return new Date(yyyy, mm - 1, dd, hh, min, ss || 0);
+      const [partA, partB, partC] = dateStr.split("/").map(Number);
+      let year = partC;
+      if (year < 100) {
+        year = year >= 70 ? 1900 + year : 2000 + year;
+      }
+      let day = partA;
+      let month = partB;
+      if (dateOrder === "MDY") {
+        day = partB;
+        month = partA;
+      }
+      if (month < 1 || month > 12) {
+        day = partA;
+        month = partB;
+      }
+      const { hour, minute, second } = parseTime(timeStr);
+      return new Date(year, month - 1, day, hour, minute, second);
+    }
+
+    function detectDateOrder(messages, preferMDY) {
+      let dmyHits = 0;
+      let mdyHits = 0;
+      messages.forEach(msg => {
+        const [partA, partB] = msg.date.split("/").map(Number);
+        if (Number.isNaN(partA) || Number.isNaN(partB)) return;
+        if (partA > 12 && partB <= 12) {
+          dmyHits += 1;
+        } else if (partB > 12 && partA <= 12) {
+          mdyHits += 1;
+        }
+      });
+      if (mdyHits > dmyHits) return "MDY";
+      if (dmyHits > mdyHits) return "DMY";
+      return preferMDY ? "MDY" : "DMY";
     }
 
     function getPeriod(dateObj) {
@@ -991,19 +1039,31 @@
       lastGroupElement = null;
       selectedUser = null;
 
-      // Regex to match: [DD/MM/YYYY HH:MM:SS] Sender: Message
-      const lineRegex = /^\[(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\]\s*(.*?):\s*(.*)$/;
+      // Regex to match:
+      // - [DD/MM/YYYY HH:MM:SS] Sender: Message
+      // - [MM/DD/YY, H:MM:SS AM] Sender: Message
+      const lineRegexClassic = /^\[(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\]\s*(.*?):\s*(.*)$/;
+      const lineRegexEnglish = /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s+(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM))\]\s*-?\s*(.*?):\s*(.*)$/i;
       const lines = rawText.split(/\r?\n/);
 
       let current = null;
+      let preferMDY = false;
       lines.forEach(rawLine => {
         const line = rawLine.replace(/\u200E/g, "").replace(/^\uFEFF/, "");
-        const match = line.match(lineRegex);
+        let match = line.match(lineRegexClassic);
+        let isEnglish = false;
+        if (!match) {
+          match = line.match(lineRegexEnglish);
+          isEnglish = Boolean(match);
+        }
         if (match) {
           if (current) {
             allMessages.push(current);
           }
           const [_, date, time, sender, message] = match;
+          if (isEnglish) {
+            preferMDY = true;
+          }
           current = { date, time, sender, message };
         } else if (current) {
           current.message += "\n" + line;
@@ -1013,6 +1073,7 @@
         allMessages.push(current);
       }
 
+      dateOrder = detectDateOrder(allMessages, preferMDY);
       populateUserSelector(allMessages);
       buildTimeline(allMessages);
       renderFromFilter(null);
