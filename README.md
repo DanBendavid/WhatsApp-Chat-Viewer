@@ -1,72 +1,72 @@
 # WhatsApp Chat Viewer
 
-Visualiseur local pour un export WhatsApp (`_chat.txt`) avec timeline, médias et impression.
+Local viewer for a WhatsApp export (`_chat.txt`) with timeline, media, and printing.
 
-![Aperçu](ViewerImage.jpg)
+![Preview](ViewerImage.jpg)
 
-## Prérequis : exporter un chat WhatsApp (avec ou sans médias)
+## Prerequisites: export a WhatsApp chat (with or without media)
 
 ### iPhone (iOS)
 
-1. Ouvrir WhatsApp et la discussion à exporter.
-1. Toucher le nom du contact/groupe en haut.
-1. Choisir **Exporter la discussion**.
-1. Choisir **Sans médias** ou **Inclure les médias**.
-1. Enregistrer dans Fichiers ou partager le fichier vers votre ordinateur.
+1. Open WhatsApp and the chat to export.
+1. Tap the contact or group name at the top.
+1. Choose **Export Chat**.
+1. Choose **Without Media** or **Include Media**.
+1. Save to Files or share the file to your computer.
 
 ### Android
 
-1. Ouvrir WhatsApp et la discussion à exporter.
-1. Menu (3 points) en haut à droite.
-1. **Plus** → **Exporter la discussion**.
-1. Choisir **Sans médias** ou **Inclure les médias**.
-1. Enregistrer/partager le fichier.
+1. Open WhatsApp and the chat to export.
+1. Menu (3 dots) in the top-right.
+1. **More** → **Export chat**.
+1. Choose **Without media** or **Include media**.
+1. Save or share the file.
 
-### Dans ce projet
+### In this project
 
-1. Récupérer le fichier texte exporté et le renommer en `_chat.txt`.
-1. Si vous avez choisi **Inclure les médias**, décompressez l’archive si besoin.
-1. Placer `_chat.txt` et les médias dans le même dossier que `whatsapp-viewerV2.html`.
-1. Les dates **JJ/MM/AAAA** sont supportées. Les exports **US (MM/DD/YYYY)** sont aussi détectés automatiquement. En cas d’ambiguïté (ex: 01/02/2026), le format jour/mois est privilégié.
-1. Le format anglais entre crochets est supporté : `[MM/DD/YY, H:MM:SS AM] Nom: Message` (avec `AM/PM`).
+1. Rename the exported text file to `_chat.txt`.
+1. If you chose **Include media**, unzip the archive if needed.
+1. Put `_chat.txt` and the media files in the same folder as `whatsapp-viewerV2.html`.
+1. Dates in **DD/MM/YYYY** are supported. US exports **MM/DD/YYYY** are auto-detected. If ambiguous (e.g. 01/02/2026), day/month is assumed.
+1. English bracket format is supported: `[MM/DD/YY, H:MM:SS AM] Name: Message` (with `AM/PM`).
 
-## Démarrage rapide
+## Quick start
 
-1. Ouvrir `whatsapp-viewerV2.html`.
-1. Le fichier `_chat.txt` est chargé automatiquement si la page est servie par un serveur local.
-1. Si le chargement auto échoue (blocage `file://`), utilisez le bouton **Choisir _chat.txt**.
+1. Open `whatsapp-viewerV2.html`.
+1. `_chat.txt` loads automatically if the page is served by a local server.
+1. If auto-load fails (blocked by `file://`), use **Choose _chat.txt**.
 
-## Lancer un serveur local (recommandé)
+## Run a local server (recommended)
 
-Option simple avec Python :
+Simple option with Python:
 
 ```powershell
 python -m http.server 8000
 ```
 
-Puis ouvrir `http://localhost:8000/whatsapp-viewerV2.html`.
+Then open `http://localhost:8000/whatsapp-viewerV2.html`.
 
-## Impression
+## Printing
 
-- Le header/footer imprimés sont personnalisés (titre + pagination).
-- Pour supprimer les en‑têtes/pieds de page du navigateur, désactivez l’option correspondante dans le dialogue d’impression.
+- Custom print header/footer are enabled (title + page number).
+- To remove the browser header/footer, disable the option in the print dialog.
 
-## Script de correction `_chat.txt`
+## `_chat.txt` correction script
 
-Le script `correct_chat_local.py` corrige la grammaire/orthographe via l’API OpenAI.
+The script `correct_chat_local.py` fixes spelling and grammar via the OpenAI API.
 
-Variables d’environnement utiles :
+Useful environment variables:
 
-- `OPENAI_API_KEY` (obligatoire)
-- `OPENAI_API_BASE` (optionnel, défaut `https://api.openai.com/v1`)
-- `OPENAI_MODEL` (optionnel, défaut `gpt-4o-mini`)
-- `LOCAL_OPENAI_MAX_CHARS` (optionnel, défaut `30000`)
-- `LOCAL_OPENAI_MERGE_ONLY` (optionnel, `1/true/yes` pour ne faire que la fusion)
+- `OPENAI_API_KEY` (required)
+- `OPENAI_API_BASE` (optional, default `https://api.openai.com/v1`)
+- `OPENAI_MODEL` (optional, default `gpt-4o-mini`)
+- `LOCAL_OPENAI_MAX_CHARS` (optional, default `30000`)
+- `LOCAL_OPENAI_MERGE_ONLY` (optional, `1/true/yes` to merge only)
 
-Exécution :
+Run:
 
 ```powershell
 python correct_chat_local.py
 ```
 
-Les fichiers générés sont ignorés par `.gitignore`.
+Generated files are ignored by `.gitignore`.
