@@ -4,6 +4,30 @@ Visualiseur local pour un export WhatsApp (`_chat.txt`) avec timeline, médias e
 
 ![Aperçu](ViewerImage.jpg)
 
+## Prérequis : exporter un chat WhatsApp (avec ou sans médias)
+
+### iPhone (iOS)
+
+1. Ouvrir WhatsApp et la discussion à exporter.
+1. Toucher le nom du contact/groupe en haut.
+1. Choisir **Exporter la discussion**.
+1. Choisir **Sans médias** ou **Inclure les médias**.
+1. Enregistrer dans Fichiers ou partager le fichier vers votre ordinateur.
+
+### Android
+
+1. Ouvrir WhatsApp et la discussion à exporter.
+1. Menu (3 points) en haut à droite.
+1. **Plus** → **Exporter la discussion**.
+1. Choisir **Sans médias** ou **Inclure les médias**.
+1. Enregistrer/partager le fichier.
+
+### Dans ce projet
+
+1. Récupérer le fichier texte exporté et le renommer en `_chat.txt`.
+1. Si vous avez choisi **Inclure les médias**, décompressez l’archive si besoin.
+1. Placer `_chat.txt` et les médias dans le même dossier que `whatsapp-viewerV2.html`.
+
 ## Démarrage rapide
 
 1. Ouvrir `whatsapp-viewerV2.html`.
